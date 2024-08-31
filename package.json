@@ -12,10 +12,12 @@
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "css-loader": "^7.1.2",
+    "lucide-react": "^0.436.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.1",
     "style-loader": "^4.0.0",
+    "styled-components": "^6.1.13",
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
