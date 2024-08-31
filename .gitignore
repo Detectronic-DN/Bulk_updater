@@ -9,3 +9,7 @@ __pycache__
 
 # virtualenvs
 .updater
+
+
+# Node Modules
+node_modules

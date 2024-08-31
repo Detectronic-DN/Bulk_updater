@@ -1,0 +1,17 @@
+{
+  "name": "bulk_updater",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Dinesh Nimmagadda",
+  "license": "ISC",
+  "description": "Bulk updater to change the settings of the device in a bulk manner",
+  "dependencies": {
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.1"
+  }
+}
