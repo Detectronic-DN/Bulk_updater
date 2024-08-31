@@ -20,7 +20,13 @@
         ],
         "skipLibCheck": true,
         "noFallthroughCasesInSwitch": true,
-        "useDefineForClassFields": true
+        "useDefineForClassFields": true,
+        "baseUrl": ".",
+        "paths": {
+            "@/*": [
+                "./src/*"
+            ]
+        }
     },
     "include": [
         "src/static/js/**/*"
