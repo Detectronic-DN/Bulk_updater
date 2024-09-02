@@ -58,7 +58,7 @@ class OneEdgeApi:
         self._session_cache: TTLCache = TTLCache(maxsize=1, ttl=28800)
         self._last_error: Optional[int] = None
         self._auth_state: AuthState = AuthState.NOT_AUTHENTICATED
-        self.username: Optional[str] = None
+        self.username: str = ""
 
     @property
     def session_id(self) -> Optional[str]:
