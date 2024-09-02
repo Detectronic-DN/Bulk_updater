@@ -2,7 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 
 interface AuthContextType {
     isAuthenticated: boolean;
-    login: () => void;
+    login: (username: string, password: string) => Promise<void>;
     logout: () => void;
 }
 
@@ -11,8 +11,33 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
-    const login = () => {
-        setIsAuthenticated(true);
+    const login = async (username: string, password: string) => {
+        try {
+            const response = await fetch('/auth/token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    username,
+                    password,
+                }),
+                credentials: 'include',
+            });
+            const data = await response.json();
+            if (response.ok) {
+                setIsAuthenticated(true);
+                // Handle MFA if required
+                if (data.requireMFA) {
+                    // Show MFA input
+                }
+            } else {
+                throw new Error(data.detail || 'Login failed');
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            setIsAuthenticated(false);
+        }
     };
 
     const logout = async () => {

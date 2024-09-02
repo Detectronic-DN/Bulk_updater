@@ -16,27 +16,15 @@ export const Login: React.FC = () => {
         setError("");
 
         try {
-            const response = await fetch("/auth/token", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: new URLSearchParams({ username, password }),
-                credentials: 'include'
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                if (data.requireMFA) {
-                    setShowMFA(true);
-                } else {
-                    login();
-                    navigate("/");
-                }
+            // Modify the login function to return an object with requireMFA property
+            const result = await login(username, password);
+            if (result?.requireMFA) { // Use optional chaining to handle undefined
+                setShowMFA(true);
             } else {
-                setError(data.detail || "Invalid username or password");
+                navigate("/");
             }
         } catch (err) {
-            setError("An error occurred. Please try again.");
+            setError((err as Error).message || "An error occurred. Please try again.");
         }
     };
 
@@ -54,14 +42,14 @@ export const Login: React.FC = () => {
             const data = await response.json();
 
             if (response.ok) {
-                login();
+                await login(username, mfaCode); // Re-authenticate with MFA code
                 setShowMFA(false);
                 navigate("/");
             } else {
-                setError("Invalid MFA code. Please try again.");
+                setError(data.detail || "Invalid MFA code. Please try again.");
             }
         } catch (err) {
-            setError("An error occurred. Please try again.");
+            setError((err as Error).message || "An error occurred. Please try again.");
         }
     };
 

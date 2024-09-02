@@ -12,7 +12,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
         const validateSession = async () => {
             try {
                 const response = await fetch('/auth/validate', {
-                    credentials: 'include' // This is important for including cookies
+                    credentials: 'include'
                 });
                 setIsValidating(false);
             } catch (error) {

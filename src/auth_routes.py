@@ -1,7 +1,8 @@
 """
 Auth Routes
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from src.logger.logger import Logger
@@ -27,14 +28,18 @@ class Token(BaseModel):
     requireMFA: bool = False
 
 
-async def get_user_info(token: str = Depends(oauth2_scheme)) -> User:
+async def get_user_info(request: Request):
     """
     Get user information from the OneEdge API.
     """
-    if one_edge_api.auth_state != AuthState.AUTHENTICATED:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated",
-                            headers={"WWW-Authenticate": "Bearer"}, )
-    return User(username=one_edge_api.username)
+    session_id = request.cookies.get("session")
+    if session_id:
+        one_edge_api.session_id = session_id
+        if await one_edge_api._verify_auth_state():
+            return User(username=one_edge_api.username)
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated"
+    )
 
 
 @router.post("/token", response_model=Token)
@@ -48,24 +53,37 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
         )
         if authenticated:
             if one_edge_api.auth_state == AuthState.WAITING_FOR_MFA:
-                return {"access_token": "", "token_type": "bearer", "requireMFA": True}
+                return JSONResponse(
+                    {"access_token": "", "token_type": "bearer", "requireMFA": True}
+                )
             else:
-                return {
-                    "access_token": one_edge_api.session_id,
-                    "token_type": "bearer",
-                    "requireMFA": False,
-                }
+                response = JSONResponse(
+                    {
+                        "access_token": one_edge_api.session_id,
+                        "token_type": "bearer",
+                        "requireMFA": False,
+                    }
+                )
+                response.set_cookie(
+                    key="session",
+                    value=one_edge_api.session_id,
+                    httponly=True,
+                    secure=True,
+                    samesite="strict",
+                )
+                return response
         else:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect username or password",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-    except OneEdgeApiError as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred: {str(e)}",
-        )
+    except HTTPException as e:
+        if e.status_code == 403 and e.detail == "MFA required":
+            return JSONResponse(
+                {"access_token": "", "token_type": "bearer", "requireMFA": True}
+            )
+        raise e
 
 
 @router.get("/user", response_model=User)
@@ -124,14 +142,15 @@ async def submit_mfa(mfa_data: User):
 
 
 @router.get("/validate")
-async def validate_session(current_user: User = Depends(get_user_info)):
+async def validate_session(request: Request):
     """
     Validate the current session.
     """
-    if one_edge_api.is_session_valid():
-        return {"message": "Session is valid"}
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Session is invalid or expired",
-        )
+    session_id = request.cookies.get("session")
+    if session_id:
+        one_edge_api.session_id = session_id
+        if await one_edge_api._verify_auth_state():
+            return {"message": "Session is valid"}
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED, detail="Session is invalid or expired"
+    )
