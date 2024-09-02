@@ -43,6 +43,7 @@ class OneEdgeApi:
     """
     OneEdge API Class
     """
+
     MAX_RETRIES: int = 3
     RETRY_DELAY: int = 5
     ITERATION_LIMIT: int = 100
@@ -147,7 +148,7 @@ class OneEdgeApi:
             for retry_count in range(self.MAX_RETRIES):
                 try:
                     async with session.post(
-                            self.endpoint_url, json=payload
+                        self.endpoint_url, json=payload
                     ) as response:
                         response_data = await response.json()
                         if response_data is None:
@@ -178,7 +179,7 @@ class OneEdgeApi:
         )
 
     def _process_response(
-            self, response_data: Dict[str, Any], cmds: Dict[str, Any]
+        self, response_data: Dict[str, Any], cmds: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
         Process the API response.
@@ -243,11 +244,14 @@ class OneEdgeApi:
         Authenticate with the API using provided credentials.
 
         Args:
-            username (str): The username.
-            password (str): The password.
+            username (str): The username (email address).
+            password (str): The password or MFA code.
 
         Returns:
-            bool: True if authentication was successful, False otherwise.
+            bool: True if authentication was successful.
+
+        Raises:
+            HTTPException: If authentication fails or MFA is required.
         """
         auth_payload: Dict[str, Dict[str, Any]] = {
             "auth": {
@@ -263,6 +267,7 @@ class OneEdgeApi:
             if auth_response.get("success"):
                 self.session_id = auth_response["params"].get("sessionId")
                 self.auth_state = AuthState.AUTHENTICATED
+                self.username = username
                 logger.info("Authentication successful", username=username)
                 return True
             else:
@@ -275,6 +280,77 @@ class OneEdgeApi:
         except OneEdgeApiError as error:
             logger.exception("An error occurred while authenticating", error=str(error))
             raise HTTPException(status_code=500, detail="Authentication error")
+
+    def is_session_valid(self) -> bool:
+        """
+        Check if the current session appears to be valid without making an API call.
+
+        Returns:
+            bool: True if the session appears valid, False otherwise.
+        """
+        return (
+            self.auth_state == AuthState.AUTHENTICATED and self.session_id is not None
+        )
+
+    async def submit_mfa(self, mfa_code: str) -> bool:
+        """
+        Submit the MFA code to the API.
+
+        Args:
+            mfa_code (str): The 6-digit TOTP code.
+
+        Returns:
+            bool: True if MFA authentication was successful.
+
+        Raises:
+            HTTPException: If MFA authentication fails or is not required.
+        """
+        if self.auth_state != AuthState.WAITING_FOR_MFA:
+            raise HTTPException(status_code=400, detail="MFA not required")
+
+        try:
+            return await self.authenticate(self.username, mfa_code)
+        except HTTPException as e:
+            if e.status_code == 403 and e.detail == "MFA required":
+                logger.error("Unexpected MFA required response during MFA submission")
+                raise HTTPException(
+                    status_code=500, detail="Unexpected authentication state"
+                )
+            self.auth_state = AuthState.NOT_AUTHENTICATED
+            raise e
+
+    async def switch_organization(self, org_id: str) -> bool:
+        """
+        Switch to a different organization.
+
+        Args:
+            org_id (str): The ID of the organization to switch to.
+
+        Returns:
+            bool: True if the switch was successful.
+
+        Raises:
+            HTTPException: If the switch fails or the user is not authenticated.
+        """
+        if self.auth_state != AuthState.AUTHENTICATED:
+            raise HTTPException(status_code=401, detail="User not authenticated")
+
+        try:
+            result = await self.run_command(
+                {"command": "session.org.switch", "params": {"id": org_id}}
+            )
+            if result.get("success"):
+                logger.info(f"Successfully switched to organization {org_id}")
+                return True
+            else:
+                raise HTTPException(
+                    status_code=400, detail="Failed to switch organization"
+                )
+        except OneEdgeApiError as error:
+            logger.exception(
+                "An error occurred while switching organizations", error=str(error)
+            )
+            raise HTTPException(status_code=500, detail="Organization switch error")
 
     async def close_session(self) -> Optional[Dict[str, Any]]:
         """
@@ -344,18 +420,19 @@ class OneEdgeApi:
         Authenticates the user with the oneEdge API.
 
         Args:
-            username (str): The username.
+            username (str): The username (email address).
             password (str): The password.
 
         Returns:
-            bool: True if authentication was successful, False otherwise.
+            bool: True if authentication was successful.
+
+        Raises:
+            HTTPException: If authentication fails or MFA is required.
         """
         self.username = username
-        for attempt in range(self.MAX_RETRIES):
-            if (
-                    self.auth_state == AuthState.AUTHENTICATED
-                    or await self._attempt_authentication(username, password)
-            ):
+        try:
+            result = await self.authenticate(username, password)
+            if result:
                 if await self._verify_auth_state():
                     return True
                 else:
@@ -363,18 +440,13 @@ class OneEdgeApi:
                         "Failed to verify authentication state", username=username
                     )
                     raise HTTPException(status_code=401, detail="Authentication failed")
-            else:
-                logger.warning(
-                    "Authentication attempt failed, retrying", attempt=attempt + 1
-                )
-                await asyncio.sleep(self.RETRY_DELAY)
-        logger.error(
-            "Failed to authenticate with the oneEdge API after multiple attempts",
-            username=username,
-        )
-        raise HTTPException(
-            status_code=401, detail="Authentication failed after multiple attempts"
-        )
+            return False
+        except HTTPException as e:
+            if e.status_code == 403 and e.detail == "MFA required":
+                # MFA is required, let the caller handle it
+                raise e
+            logger.error("Authentication failed", error=str(e))
+            raise e
 
     async def _verify_auth_state(self) -> bool:
         """
@@ -387,28 +459,4 @@ class OneEdgeApi:
             await self.verify_auth_state()
             return self.auth_state == AuthState.AUTHENTICATED
         except HTTPException:
-            return False
-
-    async def _attempt_authentication(self, username: str, password: str) -> bool:
-        """
-        Attempts to authenticate with the oneEdge API.
-
-        Args:
-            username (str): The username.
-            password (str): The password.
-
-        Returns:
-            bool: True if authentication attempt was successful, False otherwise.
-        """
-        if not username or not password:
-            logger.error("Username or password not provided")
-            raise HTTPException(
-                status_code=400, detail="Username and password are required"
-            )
-        try:
-            return await self.authenticate(username, password)
-        except HTTPException as e:
-            if e.status_code == 403 and self.auth_state == AuthState.WAITING_FOR_MFA:
-                raise e  # Re-raise the MFA required exception
-            logger.error("Authentication failed", error=str(e))
             return False

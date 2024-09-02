@@ -18,11 +18,13 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 class User(BaseModel):
     username: str
+    mfa_code: str
 
 
 class Token(BaseModel):
     access_token: str
     token_type: str
+    requireMFA: bool = False
 
 
 async def get_user_info(token: str = Depends(oauth2_scheme)) -> User:
@@ -44,13 +46,21 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
         authenticated = await one_edge_api.authenticate_user(
             form_data.username, form_data.password
         )
-        if not authenticated:
+        if authenticated:
+            if one_edge_api.auth_state == AuthState.WAITING_FOR_MFA:
+                return {"access_token": "", "token_type": "bearer", "requireMFA": True}
+            else:
+                return {
+                    "access_token": one_edge_api.session_id,
+                    "token_type": "bearer",
+                    "requireMFA": False,
+                }
+        else:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect username or password",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        return {"access_token": one_edge_api.session_id, "token_type": "bearer"}
     except OneEdgeApiError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -84,4 +94,44 @@ async def logout(current_user: User = Depends(read_users_me)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An error occurred while logging out: {str(e)}",
+        )
+
+
+@router.post("/mfa", response_model=Token)
+async def submit_mfa(mfa_data: User):
+    """
+    Submit MFA code to complete authentication.
+    """
+    try:
+        authenticated = await one_edge_api.submit_mfa(mfa_data.mfa_code)
+        if authenticated:
+            return {
+                "access_token": one_edge_api.session_id,
+                "token_type": "bearer",
+                "requireMFA": False,
+            }
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect MFA code",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    except OneEdgeApiError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred: {str(e)}",
+        )
+
+
+@router.get("/validate")
+async def validate_session(current_user: User = Depends(get_user_info)):
+    """
+    Validate the current session.
+    """
+    if one_edge_api.is_session_valid():
+        return {"message": "Session is valid"}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session is invalid or expired",
         )

@@ -5,3 +5,6 @@ jinja2
 aiohttp
 cachetools
 pydantic
+python-multipart
+python-jose[cryptography]
+fastapi-csrf-protect
