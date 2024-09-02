@@ -1,3 +1,6 @@
+"""
+Logger module for the application.
+"""
 import logging
 import time
 import os
@@ -60,6 +63,9 @@ class ColorFormatter(logging.Formatter):
 
 
 class Logger:
+    """
+    Logger class for the application.
+    """
     def __init__(
         self,
         name: str = __name__,
@@ -95,7 +101,9 @@ class Logger:
             stream_handler.setFormatter(formatter)
 
             # Determine the log directory in the project root
-            project_root = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.abspath(
+                os.path.join(os.path.dirname(__file__), "..", "..")
+            )
             log_directory = os.path.join(project_root, "logs")
             os.makedirs(log_directory, exist_ok=True)
 
@@ -213,8 +221,27 @@ class Logger:
         """
 
         def decorator(func: Callable[..., T]) -> Callable[..., T]:
+            """
+            Decorator to log the execution of a function.
+
+            Args:
+                func (Callable[..., T]): The function to log.
+
+            Returns:
+                Callable[..., T]: A wrapper function.
+            """
             @wraps(func)
             def wrapper(*args: Any, **kwargs: Any) -> T:
+                """
+                Wrapper function to log the execution of a function.
+
+                Args:
+                    *args (Any): The arguments passed to the function.
+                    **kwargs (Any): The keyword arguments passed to the function.
+
+                Returns:
+                    T: The result of the function.
+                """
                 logger = Logger(func.__module__)
                 logger._log_with_context(level, f"Executing {func.__name__}")
                 result = func(*args, **kwargs)
