@@ -16,9 +16,8 @@ export const Login: React.FC = () => {
         setError("");
 
         try {
-            // Modify the login function to return an object with requireMFA property
             const result = await login(username, password);
-            if (result?.requireMFA) { // Use optional chaining to handle undefined
+            if (result.requireMFA) {
                 setShowMFA(true);
             } else {
                 navigate("/");
@@ -42,9 +41,13 @@ export const Login: React.FC = () => {
             const data = await response.json();
 
             if (response.ok) {
-                await login(username, mfaCode); // Re-authenticate with MFA code
-                setShowMFA(false);
-                navigate("/");
+                const result = await login(username, mfaCode); // Re-authenticate with MFA code
+                if (!result.requireMFA) {
+                    setShowMFA(false);
+                    navigate("/");
+                } else {
+                    setError("MFA authentication failed. Please try again.");
+                }
             } else {
                 setError(data.detail || "Invalid MFA code. Please try again.");
             }

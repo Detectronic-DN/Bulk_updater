@@ -2,8 +2,8 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 
 interface AuthContextType {
     isAuthenticated: boolean;
-    login: (username: string, password: string) => Promise<void>;
-    logout: () => void;
+    login: (username: string, password: string) => Promise<{ requireMFA: boolean }>;
+    logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -11,7 +11,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
-    const login = async (username: string, password: string) => {
+    const login = async (username: string, password: string): Promise<{ requireMFA: boolean }> => {
         try {
             const response = await fetch('/auth/token', {
                 method: 'POST',
@@ -26,17 +26,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             });
             const data = await response.json();
             if (response.ok) {
-                setIsAuthenticated(true);
-                // Handle MFA if required
-                if (data.requireMFA) {
-                    // Show MFA input
+                if (!data.requireMFA) {
+                    setIsAuthenticated(true);
                 }
+                return { requireMFA: data.requireMFA };
             } else {
                 throw new Error(data.detail || 'Login failed');
             }
         } catch (error) {
             console.error('Login error:', error);
             setIsAuthenticated(false);
+            throw error;
         }
     };
 
@@ -44,7 +44,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
             await fetch('/auth/logout', {
                 method: 'GET',
-                credentials: 'include' 
+                credentials: 'include'
             });
         } catch (error) {
             console.error('Error during logout:', error);
@@ -56,7 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const checkAuth = async () => {
             try {
                 const response = await fetch('/auth/validate', {
-                    credentials: 'include' 
+                    credentials: 'include'
                 });
                 setIsAuthenticated(response.ok);
             } catch (error) {
