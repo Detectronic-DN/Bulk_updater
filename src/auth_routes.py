@@ -150,13 +150,10 @@ async def submit_mfa(mfa_data: User):
 
 @router.get("/validate")
 async def validate_session(request: Request):
-    logger.info(f"Validating session. Cookies: {request.cookies}")
     session_id = request.cookies.get("session")
-    logger.info(f"Session ID from cookie: {session_id}")
     if session_id:
         one_edge_api.session_id = session_id
         is_valid = await one_edge_api._verify_auth_state()
-        logger.info(f"Session validation result: {is_valid}")
         if is_valid:
             return {"message": "Session is valid"}
     logger.warning("Session is invalid or expired")
