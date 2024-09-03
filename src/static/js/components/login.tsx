@@ -29,27 +29,12 @@ export const Login: React.FC = () => {
 
     const handleMFASubmit = async (mfaCode: string) => {
         try {
-            const response = await fetch("/auth/mfa", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ username, mfa_code: mfaCode }),
-                credentials: 'include'
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                const result = await login(username, mfaCode); // Re-authenticate with MFA code
-                if (!result.requireMFA) {
-                    setShowMFA(false);
-                    navigate("/");
-                } else {
-                    setError("MFA authentication failed. Please try again.");
-                }
+            const result = await login(username, "", mfaCode);
+            if (!result.requireMFA) {
+                setShowMFA(false);
+                navigate("/");
             } else {
-                setError(data.detail || "Invalid MFA code. Please try again.");
+                setError("MFA authentication failed. Please try again.");
             }
         } catch (err) {
             setError((err as Error).message || "An error occurred. Please try again.");

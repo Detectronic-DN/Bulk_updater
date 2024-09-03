@@ -2,7 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 
 interface AuthContextType {
     isAuthenticated: boolean;
-    login: (username: string, password: string) => Promise<{ requireMFA: boolean }>;
+    login: (username: string, password: string, mfaCode?: string) => Promise<{ requireMFA: boolean }>;
     logout: () => Promise<void>;
 }
 
@@ -11,17 +11,19 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
-    const login = async (username: string, password: string): Promise<{ requireMFA: boolean }> => {
+    const login = async (username: string, password: string, mfaCode?: string): Promise<{ requireMFA: boolean }> => {
         try {
-            const response = await fetch('/auth/token', {
+            const endpoint = mfaCode ? '/auth/mfa' : '/auth/token';
+            const body = mfaCode
+                ? JSON.stringify({ username, mfa_code: mfaCode })
+                : new URLSearchParams({ username, password });
+
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Content-Type': mfaCode ? 'application/json' : 'application/x-www-form-urlencoded',
                 },
-                body: new URLSearchParams({
-                    username,
-                    password,
-                }),
+                body: body,
                 credentials: 'include',
             });
             const data = await response.json();

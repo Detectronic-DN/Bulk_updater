@@ -274,7 +274,6 @@ class OneEdgeApi:
                 self.last_error = auth_response.get("errorCodes", [None])[0]
                 if self.last_error == -90041:
                     self.auth_state = AuthState.WAITING_FOR_MFA
-                    logger.info("MFA required", username=username)
                     raise HTTPException(status_code=403, detail="MFA required")
                 self.auth_state = AuthState.NOT_AUTHENTICATED
                 raise HTTPException(status_code=401, detail="Authentication failed")
@@ -313,7 +312,6 @@ class OneEdgeApi:
             return await self.authenticate(self.username, mfa_code)
         except HTTPException as e:
             if e.status_code == 403 and e.detail == "MFA required":
-                logger.info("MFA in submission", username=self.username)
                 logger.error("Unexpected MFA required response during MFA submission")
                 raise HTTPException(
                     status_code=500, detail="Unexpected authentication state"
@@ -446,8 +444,6 @@ class OneEdgeApi:
             return False
         except HTTPException as e:
             if e.status_code == 403 and e.detail == "MFA required":
-                # MFA is required, let the caller handle it
-                logger.info("MFA let caller handle it", username=username)
                 raise e
             logger.error("Authentication failed", error=str(e))
             raise e

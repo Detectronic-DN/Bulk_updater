@@ -117,17 +117,24 @@ async def logout(current_user: User = Depends(read_users_me)):
 
 @router.post("/mfa", response_model=Token)
 async def submit_mfa(mfa_data: User):
-    """
-    Submit MFA code to complete authentication.
-    """
     try:
         authenticated = await one_edge_api.submit_mfa(mfa_data.mfa_code)
         if authenticated:
-            return {
-                "access_token": one_edge_api.session_id,
-                "token_type": "bearer",
-                "requireMFA": False,
-            }
+            response = JSONResponse(
+                {
+                    "access_token": one_edge_api.session_id,
+                    "token_type": "bearer",
+                    "requireMFA": False,
+                }
+            )
+            response.set_cookie(
+                key="session",
+                value=one_edge_api.session_id,
+                httponly=True,
+                secure=True,
+                samesite="strict",
+            )
+            return response
         else:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -143,14 +150,16 @@ async def submit_mfa(mfa_data: User):
 
 @router.get("/validate")
 async def validate_session(request: Request):
-    """
-    Validate the current session.
-    """
+    logger.info(f"Validating session. Cookies: {request.cookies}")
     session_id = request.cookies.get("session")
+    logger.info(f"Session ID from cookie: {session_id}")
     if session_id:
         one_edge_api.session_id = session_id
-        if await one_edge_api._verify_auth_state():
+        is_valid = await one_edge_api._verify_auth_state()
+        logger.info(f"Session validation result: {is_valid}")
+        if is_valid:
             return {"message": "Session is valid"}
+    logger.warning("Session is invalid or expired")
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED, detail="Session is invalid or expired"
     )
