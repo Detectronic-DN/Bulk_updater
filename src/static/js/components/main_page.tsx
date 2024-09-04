@@ -18,7 +18,7 @@ const Spinner: React.FC<{ isLoading: boolean }> = ({ isLoading }) => {
 };
 
 const MainPage: React.FC = () => {
-    const [operation, setOperation] = useState("addTags");
+    const [operation, setOperation] = useState("add-settings");
     const [file, setFile] = useState<File | null>(null);
     const [imeis, setImeis] = useState("");
     const [useDirectInput, setUseDirectInput] = useState(false);
@@ -29,19 +29,19 @@ const MainPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState<boolean>(false);
 
     const imeiOnlyOperations = [
-        "addTags",
-        "deleteTags",
-        "deleteThingsKeys",
+        "add-tags",
+        "delete-tags",
+        "delete-things-keys",
     ];
 
     const operationOptions = [
-        "addSettings",
-        "applyProfile",
-        "addTags",
-        "deleteTags",
-        "changeDef",
-        "deleteThingsKeys",
-        "deleteThingsTags",
+        "add-settings",
+        "apply-profile",
+        "add-tags",
+        "delete-tags",
+        "change-def",
+        "delete-things-keys",
+        "delete-things-tags",
     ];
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,15 +59,14 @@ const MainPage: React.FC = () => {
             } else if (file) {
                 formData.append("file", file);
             }
-            formData.append("operation", operation);
-            formData.append("useDirectInput", useDirectInput.toString());
             if (profileId) formData.append("profileId", profileId);
             if (tags) formData.append("tags", tags);
             if (thingKey) formData.append("thingKey", thingKey);
 
-            const response = await fetch("/api/device-management", {
+            const response = await fetch(`/api/${operation}`, {
                 method: "POST",
                 body: formData,
+                credentials: 'include', // Important for sending cookies
             });
 
             if (!response.ok) {

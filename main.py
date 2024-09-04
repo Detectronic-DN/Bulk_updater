@@ -6,6 +6,7 @@ from src.logger.logger import Logger
 from contextlib import asynccontextmanager
 from src.auth_routes import router as auth_router
 from fastapi.middleware.cors import CORSMiddleware
+from src.api_routes import router as api_router
 
 # Initialize the logger
 logger = Logger(name=__name__)
@@ -30,6 +31,8 @@ app.add_middleware(
 )
 # Include the auth routes
 app.include_router(auth_router, prefix="/auth", tags=["authentication"])
+# Include the api routes
+app.include_router(api_router, prefix="/api", tags=["api"])
 # Serve static files
 app.mount("/static", StaticFiles(directory="src/static"), name="static")
 
@@ -39,6 +42,12 @@ app.mount("/static", StaticFiles(directory="src/static"), name="static")
 async def read_index():
     logger.info("Serving index.html")
     return FileResponse("src/templates/index.html")
+
+
+# Add a health check endpoint
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
 
 
 if __name__ == "__main__":
