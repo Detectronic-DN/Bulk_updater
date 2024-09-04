@@ -11,3 +11,4 @@ fastapi-csrf-protect
 pandas
 aiofiles
 openpyxl
+waitress

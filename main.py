@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from src.auth_routes import router as auth_router
 from fastapi.middleware.cors import CORSMiddleware
 from src.api_routes import router as api_router
+from waitress import serve
 
 # Initialize the logger
 logger = Logger(name=__name__)
@@ -51,6 +52,5 @@ async def health_check():
 
 
 if __name__ == "__main__":
-
     logger.info("Starting the server")
-    uvicorn.run(app, host="127.0.0.1", port=8230)
+    serve(app, host="100.81.13.11", port=8230, threads=4)
