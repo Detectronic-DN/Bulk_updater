@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Route, Routes, Navigate, Link } from 'react-ro
 import { AuthProvider, useAuth } from './AuthContext';
 import { Login } from './login';
 import MainPage from './main_page';
+import { CircleUser} from 'lucide-react';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { isAuthenticated } = useAuth();
@@ -33,25 +34,34 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     return <>{children}</>;
 };
 
+const UserInfo: React.FC = () => {
+    const { username, logout } = useAuth();
+
+    return (
+        <div className="flex items-center">
+            <CircleUser className="text-white mr-2" size={24} />
+            <span className="text-white mr-4">{username}</span>
+            <button onClick={logout} className="text-white hover:text-gray-300">
+                Logout
+            </button>
+        </div>
+    );
+};
+
 const Navigation: React.FC = () => {
-    const { isAuthenticated, logout } = useAuth();
+    const { isAuthenticated } = useAuth();
 
     return (
         <nav className="bg-gray-800 p-4">
-            <ul className="flex space-x-4">
-                <li>
-                    <Link to="/" className="text-white hover:text-gray-300">Home</Link>
-                </li>
+            <div className="container mx-auto flex justify-between items-center">
+                <ul className="flex space-x-4">
+                </ul>
                 {isAuthenticated ? (
-                    <li>
-                        <button onClick={logout} className="text-white hover:text-gray-300">Logout</button>
-                    </li>
+                    <UserInfo />
                 ) : (
-                    <li>
-                        <Link to="/login" className="text-white hover:text-gray-300">Login</Link>
-                    </li>
+                    <Link to="/login" className="text-white hover:text-gray-300">Login</Link>
                 )}
-            </ul>
+            </div>
         </nav>
     );
 };

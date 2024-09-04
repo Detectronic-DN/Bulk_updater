@@ -401,6 +401,7 @@ class OneEdgeApi:
             request = await self.run_command({"command": "session.info"})
             if request["success"]:
                 self.auth_state = AuthState.AUTHENTICATED
+                self.username = request["params"]["userName"]
             else:
                 self.session_id = None
                 self.auth_state = AuthState.NOT_AUTHENTICATED

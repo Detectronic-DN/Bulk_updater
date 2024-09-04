@@ -1,6 +1,7 @@
 """
 Auth Routes
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -19,13 +20,14 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 class User(BaseModel):
     username: str
-    mfa_code: str
+    mfa_code: str | None = None
 
 
 class Token(BaseModel):
     access_token: str
     token_type: str
     requireMFA: bool = False
+    username: str | None = None
 
 
 async def get_user_info(request: Request):
@@ -54,7 +56,12 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
         if authenticated:
             if one_edge_api.auth_state == AuthState.WAITING_FOR_MFA:
                 return JSONResponse(
-                    {"access_token": "", "token_type": "bearer", "requireMFA": True}
+                    {
+                        "access_token": "",
+                        "token_type": "bearer",
+                        "requireMFA": True,
+                        "username": form_data.username,
+                    }
                 )
             else:
                 response = JSONResponse(
@@ -62,6 +69,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
                         "access_token": one_edge_api.session_id,
                         "token_type": "bearer",
                         "requireMFA": False,
+                        "username": one_edge_api.username,
                     }
                 )
                 response.set_cookie(
@@ -81,7 +89,12 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     except HTTPException as e:
         if e.status_code == 403 and e.detail == "MFA required":
             return JSONResponse(
-                {"access_token": "", "token_type": "bearer", "requireMFA": True}
+                {
+                    "access_token": "",
+                    "token_type": "bearer",
+                    "requireMFA": True,
+                    "username": form_data.username,
+                }
             )
         raise e
 
@@ -102,7 +115,9 @@ async def logout(current_user: User = Depends(read_users_me)):
     try:
         result = await one_edge_api.close_session()
         if result and result.get("success"):
-            return {"message": "Logged out successfully"}
+            response = JSONResponse({"message": "Logged out successfully"})
+            response.delete_cookie(key="session")
+            return response
         else:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -125,6 +140,7 @@ async def submit_mfa(mfa_data: User):
                     "access_token": one_edge_api.session_id,
                     "token_type": "bearer",
                     "requireMFA": False,
+                    "username": one_edge_api.username,
                 }
             )
             response.set_cookie(
@@ -155,7 +171,7 @@ async def validate_session(request: Request):
         one_edge_api.session_id = session_id
         is_valid = await one_edge_api._verify_auth_state()
         if is_valid:
-            return {"message": "Session is valid"}
+            return {"message": "Session is valid", "username": one_edge_api.username}
     logger.warning("Session is invalid or expired")
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED, detail="Session is invalid or expired"

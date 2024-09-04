@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 
 interface AuthContextType {
     isAuthenticated: boolean;
+    username: string | null;
     login: (username: string, password: string, mfaCode?: string) => Promise<{ requireMFA: boolean }>;
     logout: () => Promise<void>;
 }
@@ -10,6 +11,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+    const [username, setUsername] = useState<string | null>(null);
 
     const login = async (username: string, password: string, mfaCode?: string): Promise<{ requireMFA: boolean }> => {
         try {
@@ -30,6 +32,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (response.ok) {
                 if (!data.requireMFA) {
                     setIsAuthenticated(true);
+                    setUsername(data.username);
                 }
                 return { requireMFA: data.requireMFA };
             } else {
@@ -38,6 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (error) {
             console.error('Login error:', error);
             setIsAuthenticated(false);
+            setUsername(null);
             throw error;
         }
     };
@@ -52,6 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.error('Error during logout:', error);
         }
         setIsAuthenticated(false);
+        setUsername(null);
     };
 
     useEffect(() => {
@@ -60,17 +65,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const response = await fetch('/auth/validate', {
                     credentials: 'include'
                 });
-                setIsAuthenticated(response.ok);
+                if (response.ok) {
+                    const data = await response.json();
+                    setIsAuthenticated(true);
+                    setUsername(data.username);
+                } else {
+                    setIsAuthenticated(false);
+                    setUsername(null);
+                }
             } catch (error) {
                 console.error('Failed to validate session:', error);
                 setIsAuthenticated(false);
+                setUsername(null);
             }
         };
         checkAuth();
     }, []);
 
     return (
-        <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+        <AuthContext.Provider value={{ isAuthenticated, username, login, logout }}>
             {children}
         </AuthContext.Provider>
     );
