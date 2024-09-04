@@ -3,26 +3,20 @@ import { BrowserRouter as Router, Route, Routes, Navigate, Link } from 'react-ro
 import { AuthProvider, useAuth } from './AuthContext';
 import { Login } from './login';
 import MainPage from './main_page';
-import { CircleUser} from 'lucide-react';
+import { CircleUser } from 'lucide-react';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, validateSession } = useAuth();
     const [isValidating, setIsValidating] = useState(true);
 
     useEffect(() => {
-        const validateSession = async () => {
-            try {
-                const response = await fetch('/auth/validate', {
-                    credentials: 'include'
-                });
-                setIsValidating(false);
-            } catch (error) {
-                console.error('Failed to validate session:', error);
-                setIsValidating(false);
-            }
+        const checkSession = async () => {
+            setIsValidating(true);
+            await validateSession();
+            setIsValidating(false);
         };
-        validateSession();
-    }, []);
+        checkSession();
+    }, [validateSession]);
 
     if (isValidating) {
         return <div>Loading...</div>;
