@@ -51,9 +51,8 @@ async def add_settings(
     api: OneEdgeApi = Depends(get_one_edge_api),
 ):
     try:
-        if not await api._verify_auth_state():
-            raise HTTPException(status_code=401, detail="Not authenticated")
         imei_list, settings = await process_file_or_input(file, imeis, "add-settings")
+        logger.info(f"Total IMEIs: {len(imei_list)}")
         commands = await create_commands_settings(imei_list, settings)
         result = await api.run_commands(commands)
         return {"message": "Settings added successfully", "result": result}
@@ -72,6 +71,7 @@ async def apply_profile(
 ):
     try:
         imei_list = await process_file_or_input(file, imeis, "apply-profile")
+        logger.info(f"Total IMEIs: {len(imei_list)}")
         commands = await create_commands_device_profile(imei_list, profileId)
         result = await api.run_commands(commands)
         return {"message": "Profile applied successfully", "result": result}
@@ -90,6 +90,7 @@ async def add_tags(
 ):
     try:
         imei_list = await process_file_or_input(file, imeis, "add-tags")
+        logger.info(f"Total IMEIs: {len(imei_list)}")
         tag_list = tags.split(",")
         commands = await create_commands_tags(imei_list, tag_list)
         result = await api.run_commands(commands)
@@ -109,6 +110,7 @@ async def delete_tags(
 ):
     try:
         imei_list = await process_file_or_input(file, imeis, "delete-tags")
+        logger.info(f"Total IMEIs: {len(imei_list)}")
         tag_list = tags.split(",")
         commands = await create_commands_delete_tag(imei_list, tag_list)
         result = await api.run_commands(commands)
@@ -128,6 +130,7 @@ async def change_def(
 ):
     try:
         imei_list = await process_file_or_input(file, imeis, "change-def")
+        logger.info(f"Total IMEIs: {len(imei_list)}")
         commands = await create_commands_thing_def(imei_list, thingKey)
         result = await api.run_commands(commands)
         return {"message": "Thing definition changed successfully", "result": result}
@@ -145,6 +148,7 @@ async def delete_things_keys(
 ):
     try:
         imei_list = await process_file_or_input(file, imeis, "delete-things-keys")
+        logger.info(f"Total IMEIs: {len(imei_list)}")
         commands = await create_command_delete_things(thing_keys=imei_list)
         result = await api.run_commands(commands)
         return {"message": "Things deleted successfully", "result": result}
