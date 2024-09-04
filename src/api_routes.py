@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, Request
 from typing import List, Optional
 from src.logger.logger import Logger
 from src.oneEdge.oneEdgeAPI import OneEdgeApi
@@ -7,7 +7,6 @@ from src.bulk_changes.create_commands import (
     create_commands_device_profile,
     create_commands_settings,
     create_commands_thing_def,
-    create_commands_undeploy,
     create_commands_delete_tag,
     create_command_delete_things,
 )
@@ -36,14 +35,24 @@ async def process_file_or_input(
         raise HTTPException(status_code=400, detail="No file or IMEI list provided")
 
 
+async def get_one_edge_api(request: Request):
+    api = OneEdgeApi(endpoint_url)
+    session_id = request.cookies.get("session")
+    if session_id:
+        api.session_id = session_id
+    return api
+
+
 @router.post("/add-settings")
 async def add_settings(
     file: Optional[UploadFile] = File(None),
     imeis: Optional[str] = Form(None),
     user=Depends(get_user_info),
-    api: OneEdgeApi = Depends(lambda: OneEdgeApi(endpoint_url)),
+    api: OneEdgeApi = Depends(get_one_edge_api),
 ):
     try:
+        if not await api._verify_auth_state():
+            raise HTTPException(status_code=401, detail="Not authenticated")
         imei_list, settings = await process_file_or_input(file, imeis, "add-settings")
         commands = await create_commands_settings(imei_list, settings)
         result = await api.run_commands(commands)
@@ -59,7 +68,7 @@ async def apply_profile(
     imeis: Optional[str] = Form(None),
     profileId: str = Form(...),
     user=Depends(get_user_info),
-    api: OneEdgeApi = Depends(lambda: OneEdgeApi(endpoint_url)),
+    api: OneEdgeApi = Depends(get_one_edge_api),
 ):
     try:
         imei_list = await process_file_or_input(file, imeis, "apply-profile")
@@ -77,7 +86,7 @@ async def add_tags(
     imeis: Optional[str] = Form(None),
     tags: str = Form(...),
     user=Depends(get_user_info),
-    api: OneEdgeApi = Depends(lambda: OneEdgeApi(endpoint_url)),
+    api: OneEdgeApi = Depends(get_one_edge_api),
 ):
     try:
         imei_list = await process_file_or_input(file, imeis, "add-tags")
@@ -96,7 +105,7 @@ async def delete_tags(
     imeis: Optional[str] = Form(None),
     tags: str = Form(...),
     user=Depends(get_user_info),
-    api: OneEdgeApi = Depends(lambda: OneEdgeApi(endpoint_url)),
+    api: OneEdgeApi = Depends(get_one_edge_api),
 ):
     try:
         imei_list = await process_file_or_input(file, imeis, "delete-tags")
@@ -115,7 +124,7 @@ async def change_def(
     imeis: Optional[str] = Form(None),
     thingKey: str = Form(...),
     user=Depends(get_user_info),
-    api: OneEdgeApi = Depends(lambda: OneEdgeApi(endpoint_url)),
+    api: OneEdgeApi = Depends(get_one_edge_api),
 ):
     try:
         imei_list = await process_file_or_input(file, imeis, "change-def")
@@ -132,7 +141,7 @@ async def delete_things_keys(
     file: Optional[UploadFile] = File(None),
     imeis: Optional[str] = Form(None),
     user=Depends(get_user_info),
-    api: OneEdgeApi = Depends(lambda: OneEdgeApi(endpoint_url)),
+    api: OneEdgeApi = Depends(get_one_edge_api),
 ):
     try:
         imei_list = await process_file_or_input(file, imeis, "delete-things-keys")
@@ -148,7 +157,7 @@ async def delete_things_keys(
 async def delete_things_tags(
     tags: str = Form(...),
     user=Depends(get_user_info),
-    api: OneEdgeApi = Depends(lambda: OneEdgeApi(endpoint_url)),
+        api: OneEdgeApi = Depends(get_one_edge_api),
 ):
     try:
         tag_list = tags.split(",")

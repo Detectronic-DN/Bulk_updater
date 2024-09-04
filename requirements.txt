@@ -8,3 +8,6 @@ pydantic
 python-multipart
 python-jose[cryptography]
 fastapi-csrf-protect
+pandas
+aiofiles
+openpyxl

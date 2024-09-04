@@ -44,9 +44,18 @@ const MainPage: React.FC = () => {
         "delete-things-tags",
     ];
 
+    useEffect(() => {
+        if (!imeiOnlyOperations.includes(operation)) {
+            setUseDirectInput(false);
+        }
+    }, [operation]);
+
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        if (event.target.files) {
-            setFile(event.target.files[0]);
+        if (event.target.files && event.target.files.length > 0) {
+            const selectedFile = event.target.files[0];
+            setFile(selectedFile);
+        } else {
+            setFile(null);
         }
     };
 
@@ -66,30 +75,23 @@ const MainPage: React.FC = () => {
             const response = await fetch(`/api/${operation}`, {
                 method: "POST",
                 body: formData,
-                credentials: 'include', // Important for sending cookies
+                credentials: 'include',
             });
 
             if (!response.ok) {
-                throw new Error("Server error");
+                throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
             }
 
             const data = await response.json();
-            setResult(data);
+            setResult(data.result || data);
         } catch (error) {
             setResult({
-                error:
-                    error instanceof Error ? error.message : "An unknown error occurred",
+                error: error instanceof Error ? error.message : "An unknown error occurred",
             });
         } finally {
             setIsLoading(false);
         }
     };
-
-    useEffect(() => {
-        if (!imeiOnlyOperations.includes(operation)) {
-            setUseDirectInput(false);
-        }
-    }, [operation]);
 
     return (
         <>
@@ -123,7 +125,9 @@ const MainPage: React.FC = () => {
                                         id="use-direct-input"
                                         type="checkbox"
                                         checked={useDirectInput}
-                                        onChange={(e) => setUseDirectInput(e.target.checked)}
+                                        onChange={(e) => {
+                                            setUseDirectInput(e.target.checked);
+                                        }}
                                         className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                                     />
                                     <label htmlFor="use-direct-input" className="ml-2 text-sm text-gray-700">
@@ -140,7 +144,9 @@ const MainPage: React.FC = () => {
                                     <textarea
                                         id="imeis"
                                         value={imeis}
-                                        onChange={(e) => setImeis(e.target.value)}
+                                        onChange={(e) => {
+                                            setImeis(e.target.value);
+                                        }}
                                         rows={5}
                                         className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                                         placeholder="Enter IMEI numbers, one per line"
@@ -172,10 +178,11 @@ const MainPage: React.FC = () => {
                                             <p className="text-xs text-gray-500">CSV or TXT up to 10MB</p>
                                         </div>
                                     </div>
+                                    {file && <p className="mt-2 text-sm text-gray-600">Selected file: {file.name}</p>}
                                 </div>
                             )}
 
-                            {operation === "applyProfile" && (
+                            {operation === "apply-profile" && (
                                 <div>
                                     <label htmlFor="profileId" className="block text-sm font-medium text-gray-700">
                                         Profile ID
@@ -184,14 +191,16 @@ const MainPage: React.FC = () => {
                                         id="profileId"
                                         type="text"
                                         value={profileId}
-                                        onChange={(e) => setProfileId(e.target.value)}
+                                        onChange={(e) => {
+                                            setProfileId(e.target.value);
+                                        }}
                                         className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                                         placeholder="Enter Profile ID"
                                     />
                                 </div>
                             )}
 
-                            {["addTags", "deleteTags", "deleteThingsTags"].includes(operation) && (
+                            {["add-tags", "delete-tags", "delete-things-tags"].includes(operation) && (
                                 <div>
                                     <label htmlFor="tags" className="block text-sm font-medium text-gray-700">
                                         Tags
@@ -200,14 +209,16 @@ const MainPage: React.FC = () => {
                                         id="tags"
                                         type="text"
                                         value={tags}
-                                        onChange={(e) => setTags(e.target.value)}
+                                        onChange={(e) => {
+                                            setTags(e.target.value);
+                                        }}
                                         className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                                         placeholder="Enter tags separated by commas"
                                     />
                                 </div>
                             )}
 
-                            {operation === "changeDef" && (
+                            {operation === "change-def" && (
                                 <div>
                                     <label htmlFor="thingKey" className="block text-sm font-medium text-gray-700">
                                         Thing Definition Key
@@ -216,7 +227,9 @@ const MainPage: React.FC = () => {
                                         id="thingKey"
                                         type="text"
                                         value={thingKey}
-                                        onChange={(e) => setThingKey(e.target.value)}
+                                        onChange={(e) => {
+                                            setThingKey(e.target.value);
+                                        }}
                                         className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                                         placeholder="Enter new thing definition key"
                                     />

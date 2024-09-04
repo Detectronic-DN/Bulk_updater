@@ -1,5 +1,5 @@
 import re
-from io import StringIO
+from io import StringIO, BytesIO
 from typing import Tuple, List, Union
 
 import aiofiles
@@ -11,26 +11,39 @@ from src.logger.logger import Logger
 logger = Logger(__name__)
 
 
-async def read_file(file_path: str) -> pd.DataFrame:
+async def read_file(file: Union[str, BytesIO]) -> pd.DataFrame:
     """
     Reads an Excel or CSV file and returns the content as a pandas DataFrame.
 
-    :param file_path: The path to the input file. Must be either .xlsx or .csv format.
+    :param file: The path to the input file or a BytesIO object. Must be either .xlsx or .csv format.
     :return: A pandas DataFrame containing the file's content.
     :raises ValueError: If the file format is unsupported.
     :raises FileNotFoundError: If the specified file does not exist.
     :raises pd.errors.EmptyDataError: If the file is empty.
     """
-    if file_path.lower().endswith(".xlsx"):
-        return await asyncio.to_thread(pd.read_excel, file_path, header=None)
-    elif file_path.lower().endswith(".csv"):
-        async with aiofiles.open(file_path, mode="r") as f:
-            content = await f.read()
-        return pd.read_csv(StringIO(content), header=None)
+    if isinstance(file, BytesIO):
+        # Reset the file pointer to the beginning
+        file.seek(0)
+        # Try to read as CSV first
+        try:
+            return pd.read_csv(file, header=None)
+        except:
+            # If CSV fails, try Excel
+            file.seek(0)
+            return pd.read_excel(file, header=None)
+    elif isinstance(file, str):
+        if file.lower().endswith(".xlsx"):
+            return await asyncio.to_thread(pd.read_excel, file, header=None)
+        elif file.lower().endswith(".csv"):
+            async with aiofiles.open(file, mode="r") as f:
+                content = await f.read()
+            return pd.read_csv(StringIO(content), header=None)
+        else:
+            raise ValueError(
+                "Unsupported file format. Only .xlsx and .csv files are supported."
+            )
     else:
-        raise ValueError(
-            "Unsupported file format. Only .xlsx and .csv files are supported."
-        )
+        raise ValueError("Invalid input type. Expected string or BytesIO object.")
 
 
 async def deduplicate_imeis(imei_list: List[str], settings_list: List[str]) -> Tuple[List[str], List[str]]:
@@ -59,11 +72,13 @@ async def deduplicate_imeis(imei_list: List[str], settings_list: List[str]) -> T
     return unique_imeis, unique_settings
 
 
-async def read_imei_and_setting(file_path: str) -> Tuple[List[str], List[str]]:
+async def read_imei_and_setting(
+    file: Union[str, BytesIO]
+) -> Tuple[List[str], List[str]]:
     """
     Reads IMEI numbers and settings from an Excel or CSV file.
 
-    :param file_path: The path to the input file. Must be either .xlsx or .csv format.
+    :param file: The path to the input file or a BytesIO object. Must be either .xlsx or .csv format.
     :return: A tuple containing two lists:
              - The first list contains unique IMEI numbers.
              - The second list contains corresponding settings (as strings).
@@ -71,7 +86,7 @@ async def read_imei_and_setting(file_path: str) -> Tuple[List[str], List[str]]:
     :raises FileNotFoundError: If the specified file does not exist.
     :raises pd.errors.EmptyDataError: If the file is empty.
     """
-    df: pd.DataFrame = await read_file(file_path)
+    df: pd.DataFrame = await read_file(file)
 
     if df.empty:
         raise ValueError("The file contains no data.")
@@ -113,11 +128,11 @@ async def read_imei_and_setting(file_path: str) -> Tuple[List[str], List[str]]:
     if header_present:
         header_row = df[df[imei_col].astype(str).str.lower() == "imei"].index[0]
         df.columns = df.iloc[header_row]
-        df = df.drop(df.index[:header_row + 1])
+        df = df.drop(df.index[: header_row + 1])
         df = df.reset_index(drop=True)
 
         # Find the new column names for IMEI and settings
-        imei_col = next((col for col in df.columns if 'imei' in str(col).lower()), None)
+        imei_col = next((col for col in df.columns if "imei" in str(col).lower()), None)
         if imei_col is None:
             raise ValueError("IMEI column not found after processing header.")
 
@@ -127,7 +142,13 @@ async def read_imei_and_setting(file_path: str) -> Tuple[List[str], List[str]]:
 
     # Extract IMEIs and settings
     imei_settings = df[[imei_col, setting_col]].dropna()
-    ids = imei_settings[imei_col].astype(str).str.extract(r'(\d{15})')[0].dropna().tolist()
+    ids = (
+        imei_settings[imei_col]
+        .astype(str)
+        .str.extract(r"(\d{15})")[0]
+        .dropna()
+        .tolist()
+    )
     settings = imei_settings[setting_col].dropna().tolist()
 
     # Deduplicate IMEIs while maintaining correspondence with settings
