@@ -18,6 +18,10 @@ one_edge_api = OneEdgeApi(api_endpoint)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
+def is_secure_connection(request: Request) -> bool:
+    return request.url.scheme == "https"
+
+
 class User(BaseModel):
     username: str
     mfa_code: str | None = None
@@ -45,10 +49,7 @@ async def get_user_info(request: Request):
 
 
 @router.post("/token", response_model=Token)
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    """
-    Login to the OneEdge API.
-    """
+async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
     try:
         authenticated = await one_edge_api.authenticate_user(
             form_data.username, form_data.password
@@ -56,29 +57,32 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
         if authenticated:
             if one_edge_api.auth_state == AuthState.WAITING_FOR_MFA:
                 return JSONResponse(
-                    {
+                    content={
                         "access_token": "",
                         "token_type": "bearer",
                         "requireMFA": True,
                         "username": form_data.username,
-                    }
+                    },
+                    headers={"Content-Type": "application/json; charset=utf-8"},
                 )
             else:
                 response = JSONResponse(
-                    {
+                    content={
                         "access_token": one_edge_api.session_id,
                         "token_type": "bearer",
                         "requireMFA": False,
                         "username": one_edge_api.username,
-                    }
+                    },
+                    headers={"Content-Type": "application/json; charset=utf-8"},
                 )
                 response.set_cookie(
                     key="session",
                     value=one_edge_api.session_id,
                     httponly=True,
-                    secure=True,
-                    samesite="strict",
+                    secure=True,  # Always set secure to True
+                    samesite="lax",
                 )
+                logger.info(f"Login successful. Session ID: {one_edge_api.session_id}")
                 return response
         else:
             raise HTTPException(
@@ -89,12 +93,13 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     except HTTPException as e:
         if e.status_code == 403 and e.detail == "MFA required":
             return JSONResponse(
-                {
+                content={
                     "access_token": "",
                     "token_type": "bearer",
                     "requireMFA": True,
                     "username": form_data.username,
-                }
+                },
+                headers={"Content-Type": "application/json; charset=utf-8"},
             )
         raise e
 
@@ -167,11 +172,19 @@ async def submit_mfa(mfa_data: User):
 @router.get("/validate")
 async def validate_session(request: Request):
     session_id = request.cookies.get("session")
+    logger.info(f"Validating session. Session ID: {session_id}")
     if session_id:
         one_edge_api.session_id = session_id
         is_valid = await one_edge_api._verify_auth_state()
+        logger.info(f"Session validation result: {is_valid}")
         if is_valid:
-            return {"message": "Session is valid", "username": one_edge_api.username}
+            return JSONResponse(
+                content={
+                    "message": "Session is valid",
+                    "username": one_edge_api.username,
+                },
+                headers={"Content-Type": "application/json; charset=utf-8"},
+            )
     logger.warning("Session is invalid or expired")
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED, detail="Session is invalid or expired"

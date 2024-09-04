@@ -48,6 +48,8 @@ export const Login: React.FC = () => {
                 <form className="flex flex-col" onSubmit={handleSubmit}>
                     <input
                         type="text"
+                        id="username"
+                        name="username"
                         className="bg-gray-100 text-gray-900 border-0 rounded-md p-2 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 transition ease-in-out duration-150"
                         placeholder="Username"
                         value={username}
@@ -56,6 +58,8 @@ export const Login: React.FC = () => {
                     />
                     <input
                         type="password"
+                        id="password"
+                        name="password"
                         className="bg-gray-100 text-gray-900 border-0 rounded-md p-2 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 transition ease-in-out duration-150"
                         placeholder="Password"
                         value={password}

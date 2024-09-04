@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+body {
+  text-size-adjust: 100%;
+}
+
 .login-container {
     max-width: 300px;
     margin: 0 auto;
