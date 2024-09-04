@@ -75,11 +75,12 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
                     },
                     headers={"Content-Type": "application/json; charset=utf-8"},
                 )
-                response.set_cookie(
-                    key="session",
+                if one_edge_api.session_id:
+                    response.set_cookie(
+                        key="session",
                     value=one_edge_api.session_id,
                     httponly=True,
-                    secure=True,  # Always set secure to True
+                    secure=is_secure_connection(request),
                     samesite="lax",
                 )
                 logger.info(f"Login successful. Session ID: {one_edge_api.session_id}")

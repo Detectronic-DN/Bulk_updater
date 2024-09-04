@@ -381,41 +381,29 @@ class OneEdgeApi:
             )
             raise HTTPException(status_code=500, detail="Failed to close session")
 
-    async def verify_auth_state(self) -> None:
-        """
-        Check the authentication status.
+    async def verify_auth_state(self) -> bool:
+        """Verifies the current authentication state of the API."""
+        if not self.session_id or self.session_id in ["None", "null"]:
+            self.session_id = None
+            self.auth_state = AuthState.NOT_AUTHENTICATED
+            logger.info("Auth state set to NOT_AUTHENTICATED due to invalid session ID")
+            return False
 
-        Raises:
-            OneEdgeApiError: If an error occurs while verifying the authentication state.
-        """
         try:
-            if not self.session_id or self.session_id in ["None", "null"]:
-
-                self.session_id = None
-                self.auth_state = AuthState.NOT_AUTHENTICATED
-                logger.info(
-                    "Auth state set to NOT_AUTHENTICATED due to invalid session ID"
-                )
-                return
-
             request = await self.run_command({"command": "session.info"})
             if request["success"]:
                 self.auth_state = AuthState.AUTHENTICATED
                 self.username = request["params"]["userName"]
+                return True
             else:
                 self.session_id = None
                 self.auth_state = AuthState.NOT_AUTHENTICATED
-                logger.warning(
-                    "Auth state set to NOT_AUTHENTICATED after failed verification"
-                )
+                logger.warning("Auth state set to NOT_AUTHENTICATED after failed verification")
+                return False
         except OneEdgeApiError as e:
-            logger.exception(
-                "An error occurred while verifying the authentication state",
-                error=str(e),
-            )
-            raise HTTPException(
-                status_code=500, detail="Failed to verify authentication state"
-            )
+            logger.exception("An error occurred while verifying the authentication state", error=str(e))
+            self.auth_state = AuthState.NOT_AUTHENTICATED
+            return False
 
     async def authenticate_user(self, username: str, password: str) -> bool:
         """
@@ -432,6 +420,7 @@ class OneEdgeApi:
             HTTPException: If authentication fails or MFA is required.
         """
         self.username = username
+
         try:
             result = await self.authenticate(username, password)
             if result:

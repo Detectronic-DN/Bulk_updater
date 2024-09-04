@@ -11,7 +11,6 @@ from src.bulk_changes.create_commands import (
     create_command_delete_things,
 )
 from src.bulk_changes.get_data import read_imei_and_setting, read_imei_only
-from src.auth_routes import get_user_info
 import io
 
 logger = Logger(__name__)
@@ -36,10 +35,13 @@ async def process_file_or_input(
 
 
 async def get_one_edge_api(request: Request):
-    api = OneEdgeApi(endpoint_url)
     session_id = request.cookies.get("session")
-    if session_id:
-        api.session_id = session_id
+    if not session_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    api = OneEdgeApi(endpoint_url)
+    api.session_id = session_id
+    if not await api._verify_auth_state():
+        raise HTTPException(status_code=401, detail="Session is invalid or expired")
     return api
 
 
@@ -47,7 +49,6 @@ async def get_one_edge_api(request: Request):
 async def add_settings(
     file: Optional[UploadFile] = File(None),
     imeis: Optional[str] = Form(None),
-    user=Depends(get_user_info),
     api: OneEdgeApi = Depends(get_one_edge_api),
 ):
     try:
@@ -66,7 +67,6 @@ async def apply_profile(
     file: Optional[UploadFile] = File(None),
     imeis: Optional[str] = Form(None),
     profileId: str = Form(...),
-    user=Depends(get_user_info),
     api: OneEdgeApi = Depends(get_one_edge_api),
 ):
     try:
@@ -85,7 +85,6 @@ async def add_tags(
     file: Optional[UploadFile] = File(None),
     imeis: Optional[str] = Form(None),
     tags: str = Form(...),
-    user=Depends(get_user_info),
     api: OneEdgeApi = Depends(get_one_edge_api),
 ):
     try:
@@ -105,7 +104,6 @@ async def delete_tags(
     file: Optional[UploadFile] = File(None),
     imeis: Optional[str] = Form(None),
     tags: str = Form(...),
-    user=Depends(get_user_info),
     api: OneEdgeApi = Depends(get_one_edge_api),
 ):
     try:
@@ -125,7 +123,6 @@ async def change_def(
     file: Optional[UploadFile] = File(None),
     imeis: Optional[str] = Form(None),
     thingKey: str = Form(...),
-    user=Depends(get_user_info),
     api: OneEdgeApi = Depends(get_one_edge_api),
 ):
     try:
@@ -143,7 +140,6 @@ async def change_def(
 async def delete_things_keys(
     file: Optional[UploadFile] = File(None),
     imeis: Optional[str] = Form(None),
-    user=Depends(get_user_info),
     api: OneEdgeApi = Depends(get_one_edge_api),
 ):
     try:
@@ -160,8 +156,7 @@ async def delete_things_keys(
 @router.post("/delete-things-tags")
 async def delete_things_tags(
     tags: str = Form(...),
-    user=Depends(get_user_info),
-        api: OneEdgeApi = Depends(get_one_edge_api),
+    api: OneEdgeApi = Depends(get_one_edge_api),
 ):
     try:
         tag_list = tags.split(",")
