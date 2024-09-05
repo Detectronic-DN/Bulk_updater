@@ -1,3 +1,4 @@
+import os
 import uvicorn
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -49,6 +50,12 @@ async def read_index():
 async def health_check():
     return {"status": "healthy"}
 
-
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="100.81.13.11", port=8230, workers=3)
+    logger.info("Starting the server")
+    host = os.getenv(
+        "HOST", "0.0.0.0"
+    )  # Changed to 0.0.0.0 to listen on all interfaces
+    port = int(os.getenv("PORT", 8230))
+    workers = int(os.getenv("WORKERS", 3))
+
+    uvicorn.run(app, host=host, port=port, workers=workers)
