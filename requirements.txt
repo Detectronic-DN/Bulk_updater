@@ -12,3 +12,4 @@ pandas
 aiofiles
 openpyxl
 waitress
+fastapi[standard]
