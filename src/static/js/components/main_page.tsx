@@ -69,6 +69,18 @@ const MainPage: React.FC = () => {
         "LIDOTT"
     ];
 
+    const profileMapping = {
+        "Device Management Profile - Basic (Global)": "5e834741447cfb6072a732a5",
+        "Device Management Profile - Troubleshooting (Global)": "5e834741447cfb6072a732dc",
+        "Minimal FOTA Profile (Global)": "5e834741447cfb6072a73326",
+        "LIDOTT Device Profile": "65a7d9d5447cfb0578dead76"
+    };
+
+    const thingDefMapping = {
+        "Default": "6086e89eba2b57514c9bdbc9",
+        "LIDOTT": "65a69096ba2b577d739e6a31"
+    };
+
     useEffect(() => {
         if (!imeiOnlyOperations.includes(operation)) {
             setUseDirectInput(false);
@@ -93,9 +105,21 @@ const MainPage: React.FC = () => {
             } else if (file) {
                 formData.append("file", file);
             }
-            if (profileName) formData.append("profileName", profileName);
-            if (tags) formData.append("tags", tags);
-            if (thingDefinition) formData.append("thingDefinition", thingDefinition);
+            if (profileName) {
+                const profileId = profileMapping[profileName as keyof typeof profileMapping];
+                formData.append("profileId", profileId);
+            }
+            if (tags) {
+                const tagList = tags.includes(',')
+                    ? tags.split(',').map(tag => tag.trim()).filter(tag => tag !== '')
+                    : [tags.trim()].filter(tag => tag !== '');
+                formData.append("tags", JSON.stringify(tagList));
+            }
+
+            if (thingDefinition) {
+                const thingDefId = thingDefMapping[thingDefinition as keyof typeof thingDefMapping];
+                formData.append("thingDefinitionId", thingDefId);
+            }
 
             const apiOperation = operationMapping[operation as keyof typeof operationMapping];
             const response = await fetch(`/api/${apiOperation}`, {

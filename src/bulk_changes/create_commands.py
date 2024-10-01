@@ -1,4 +1,4 @@
-from typing import List, Dict, Optional, Any, Union
+from typing import List, Dict, Optional, Any, Union, Tuple
 from src.oneEdge.oneEdgeAPI import OneEdgeApi, OneEdgeApiError
 from src.logger.logger import Logger
 
@@ -344,3 +344,211 @@ async def create_command_delete_things(
     except Exception as e:
         logger.error(f"Error creating delete things command: {e}")
         raise
+
+
+async def search_inventory(
+        imei: str,
+        api: OneEdgeApi,
+) -> Optional[Tuple[str, str]]:
+    """
+    Searches for an inventory item by IMEI number.
+
+    :param imei: The IMEI number to search for.
+    :param api: An instance of the OneEdgeApi class.
+    :return: The inventory item if found, or None if not found. The tuple contains the identifier ID and IoT ID.
+    """
+    request = {
+        "command": "module.inventory.find",
+        "params": {
+            "identifiers": imei
+        }
+    }
+    try:
+        response = await api.run_command(request)
+        if not response.get("success"):
+            error_msg = f"Thing {imei} not found or API call unsuccessful"
+            logger.error(error_msg)
+            if 'errorMessages' in response:
+                logger.error(response['errorMessages'])
+            raise RuntimeError(error_msg)
+        logger.info(f"Thing {imei} found!")
+        identifier_id = response.get('params', {}).get('id')
+        iotId = response.get('params', {}).get('iotId')
+        return (identifier_id, iotId)
+    except Exception as e:
+        logger.error(f"Error searching inventory: {e}")
+        raise RuntimeError(f"Error searching inventory: {e}")
+
+async def create_thing(
+        api: OneEdgeApi, def_id: str, imei: str, tags: Optional[List[str]]
+) -> str:
+    """
+    Creates a new thing based on the definition ID and key provided.
+
+    Parameters:
+    - api: The API client capable of sending asynchronous commands.
+    - def_id: The definition ID for the new thing.
+    - thing_key: The key for the new thing, which serves as a unique identifier.
+    - tags: A list of tags to assign to the new thing.
+
+    Returns:
+    - The ID of the newly created thing if successful.
+
+    Raises:
+    - RuntimeError: If the thing creation fails.
+    """
+    request = {
+        "command": "thing.create",
+        "params": {
+            "defId": def_id,
+            "name": imei,
+            "key": imei,
+            "tags": tags,
+            "locEnabled": "1",
+        },
+    }
+    try:
+        response = await api.run_command(request)
+        if response.get('success'):
+            logger.info("Thing created successfully!")
+            thing_id: str = response.get('params', {}).get('id')
+            return thing_id
+        else:
+            error_msgs: List[str] = response.get('errorMessages', [])
+            error_msg: str = "Error creating thing: " + ", ".join(error_msgs)
+
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
+    except Exception as e:
+        logger.error(f"Error creating thing: {e}")
+        raise RuntimeError(f"Error creating thing: {e}")
+
+
+async def create_module(api: OneEdgeApi, inventory_id: str, thing_id: str) -> None:
+    """
+    Creates a new module for a thing using the given inventory and thing IDs.
+
+    Parameters:
+    - api: The API client capable of sending asynchronous commands.
+    - inventory_id: The inventory ID where the module will be created.
+    - thing_id: The thing ID to which the module will be attached.
+
+    Returns:
+    - None. Success or error is logged.
+
+    Raises:
+    - RuntimeError: If module creation fails.
+    """
+    request = {
+        "command": "module.create",
+        "params": {"inventoryId": inventory_id, "thingId": thing_id},
+    }
+    try:
+        response = await api.run_command(request)
+        if response.get("success"):
+            logger.info("Module created successfully!")
+        else:
+            error_msg = "Error creating module" + (response.get("errorMessage", ""))
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
+    except Exception as e:
+        logger.error(f"Error creating module: {e}")
+        raise RuntimeError(f"Error creating module: {e}")
+
+async def update_lwm2m_profile(
+    api: OneEdgeApi,
+    thing_id: str,
+    profile_id: str,
+    iot_id: str,
+) -> Optional[dict]:
+    """
+    Asynchronously updates the LWM2M profile associated with a specific thing.
+
+    Parameters:
+    - api: The API client capable of sending asynchronous commands.
+    - thing_id: The ID of the thing to update.
+    - profile_id: The ID of the LWM2M profile to apply.
+    - iot_id: The ID of the IoT device to update.
+
+    Returns:
+    - The response from the API if the update was successful, None otherwise.
+
+    Raises:
+    - ValueError: If thing_id, profile_id, or iot_id is empty or None.
+    - RuntimeError: If the API call fails.
+    """
+    if not all([thing_id, profile_id, iot_id]):
+        raise ValueError(
+            "thing_id, profile_id, and iot_id must all be provided and non-empty."
+        )
+
+    request = {
+        "command": "lwm2m.device.update",
+        "params": {
+            "connection": "bootstrap_dtls",
+            "endpoint": iot_id,
+            "profileId": profile_id,
+            "thingId": thing_id,
+        },
+    }
+
+    try:
+        response = await api.run_command(request)
+        if response.get("success"):
+            logger.info("LWM2M profile updated successfully!")
+            return response
+        else:
+            error_msg = response.get("errorMessage", "Error updating LWM2M profile")
+            logger.error(f"Failed to update LWM2M profile: {error_msg}")
+            raise RuntimeError(f"Failed to update LWM2M profile: {error_msg}")
+
+    except Exception as e:
+        logger.error(f"Exception occurred while updating LWM2M profile: {e}")
+        raise e
+
+
+async def onboarding_things(
+    api: OneEdgeApi,
+    imei_list: List[str],
+    profile_id: str,
+    thing_def_id: str,
+    tags: List[str],
+):
+    """
+    Asynchronously creates new things and modules for a list of IMEI numbers.
+
+    Parameters:
+    - api: The API client capable of sending asynchronous commands.
+    - imei_list: A list of IMEI numbers to onboard.
+    - profile_id: The ID of the LWM2M profile to apply.
+    - thing_def_id: The ID of the Thing Definition to use for the new things.
+    - tags: A list of tags to apply to the new things and modules.
+
+    Returns:
+    - None. Success or error is logged.
+
+    Raises:
+    - ValueError: If imei_list is empty or None.
+    - RuntimeError: If the API call fails.
+    """
+    if not all([imei_list, profile_id, thing_def_id, tags]):
+        raise ValueError(
+            "imei_list, profile_id, thing_def_id, and tags must all be provided and non-empty."
+        )
+
+    for imei in imei_list:
+        try:
+            inventory_id, iotId = await search_inventory(imei, api)
+            thing_id = await create_thing(api, def_id=thing_def_id, imei=imei, tags=tags)
+            if not thing_id:
+                logger.error("Failed to create new thing")
+                return
+
+            await create_module(api, inventory_id, thing_id)
+            await update_lwm2m_profile(api, thing_id, profile_id, iotId)
+
+            logger.info(f"Successfully Onboarded {imei}")
+
+        except Exception as e:
+            logger.error(f"Failed to onboard {imei}: {e}")
+

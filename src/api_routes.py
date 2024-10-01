@@ -9,9 +9,11 @@ from src.bulk_changes.create_commands import (
     create_commands_thing_def,
     create_commands_delete_tag,
     create_command_delete_things,
+    onboarding_things,
 )
 from src.bulk_changes.get_data import read_imei_and_setting, read_imei_only
 import io
+import json
 
 logger = Logger(__name__)
 router = APIRouter()
@@ -66,7 +68,7 @@ async def add_settings(
 async def apply_profile(
     file: Optional[UploadFile] = File(None),
     imeis: Optional[str] = Form(None),
-    profileId: str = Form(...),
+    profileId: str = Form(...),  # This is now the actual profile ID, not the name
     api: OneEdgeApi = Depends(get_one_edge_api),
 ):
     try:
@@ -90,7 +92,9 @@ async def add_tags(
     try:
         imei_list = await process_file_or_input(file, imeis, "add-tags")
         logger.info(f"Total IMEIs: {len(imei_list)}")
-        tag_list = tags.split(",")
+        tag_list = json.loads(tags)
+        if not isinstance(tag_list, list):
+            tag_list = [tag_list]        
         commands = await create_commands_tags(imei_list, tag_list)
         result = await api.run_commands(commands)
         return {"message": "Tags added successfully", "result": result}
@@ -109,7 +113,9 @@ async def delete_tags(
     try:
         imei_list = await process_file_or_input(file, imeis, "delete-tags")
         logger.info(f"Total IMEIs: {len(imei_list)}")
-        tag_list = tags.split(",")
+        tag_list = json.loads(tags)
+        if not isinstance(tag_list, list):
+            tag_list = [tag_list]
         commands = await create_commands_delete_tag(imei_list, tag_list)
         result = await api.run_commands(commands)
         return {"message": "Tags deleted successfully", "result": result}
@@ -122,13 +128,13 @@ async def delete_tags(
 async def change_def(
     file: Optional[UploadFile] = File(None),
     imeis: Optional[str] = Form(None),
-    thingKey: str = Form(...),
+    thingDefinitionId: str = Form(...),
     api: OneEdgeApi = Depends(get_one_edge_api),
 ):
     try:
         imei_list = await process_file_or_input(file, imeis, "change-def")
         logger.info(f"Total IMEIs: {len(imei_list)}")
-        commands = await create_commands_thing_def(imei_list, thingKey)
+        commands = await create_commands_thing_def(imei_list, thingDefinitionId)
         result = await api.run_commands(commands)
         return {"message": "Thing definition changed successfully", "result": result}
     except Exception as e:
@@ -159,10 +165,39 @@ async def delete_things_tags(
     api: OneEdgeApi = Depends(get_one_edge_api),
 ):
     try:
-        tag_list = tags.split(",")
+        tag_list = json.loads(tags)
+        if not isinstance(tag_list, list):
+            tag_list = [tag_list]
         commands = await create_command_delete_things(tags=tag_list)
         result = await api.run_commands(commands)
         return {"message": "Things deleted successfully", "result": result}
     except Exception as e:
         logger.error(f"Error in delete things by tags: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/onboarding")
+async def onboarding(
+    file: Optional[UploadFile] = File(None),
+    imeis: Optional[str] = Form(None),
+    profileId: str = Form(...),
+    thingDefinitionId: str = Form(...),
+    tags: str = Form(...),
+    api: OneEdgeApi = Depends(get_one_edge_api),
+):
+    try:
+        imei_list = await process_file_or_input(file, imeis, "onboarding")
+        logger.info(f"Total IMEIs: {len(imei_list)}")
+
+        tag_list = json.loads(tags)
+        if not isinstance(tag_list, list):
+            tag_list = [tag_list]
+
+        await onboarding_things(
+            api, imei_list, profileId, thingDefinitionId, tag_list
+        )
+
+        return {"message": "Things onboarded successfully"}
+    except Exception as e:
+        logger.error(f"Error in onboarding: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
