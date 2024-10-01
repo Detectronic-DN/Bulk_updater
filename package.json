@@ -9,8 +9,14 @@
   "license": "ISC",
   "description": "Bulk updater to change the settings of the device in a bulk manner",
   "dependencies": {
+    "@radix-ui/react-checkbox": "^1.1.1",
+    "@radix-ui/react-label": "^2.1.0",
+    "@radix-ui/react-select": "^2.1.1",
+    "@radix-ui/react-slot": "^1.1.0",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.1",
     "css-loader": "^7.1.2",
     "lucide-react": "^0.436.0",
     "react": "^18.3.1",
@@ -18,6 +24,7 @@
     "react-router-dom": "^6.26.1",
     "style-loader": "^4.0.0",
     "styled-components": "^6.1.13",
+    "tailwind-merge": "^2.5.2",
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
@@ -25,7 +32,7 @@
     "html-webpack-plugin": "^5.6.0",
     "postcss": "^8.4.44",
     "postcss-loader": "^8.1.1",
-    "tailwindcss": "^3.4.10",
+    "tailwindcss": "^3.4.13",
     "ts-loader": "^9.5.1",
     "typescript": "^5.5.4",
     "webpack": "^5.94.0",
