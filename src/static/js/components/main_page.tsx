@@ -18,30 +18,55 @@ const Spinner: React.FC<{ isLoading: boolean }> = ({ isLoading }) => {
 };
 
 const MainPage: React.FC = () => {
-    const [operation, setOperation] = useState("add-settings");
+    const [operation, setOperation] = useState("Add Alarm Settings");
     const [file, setFile] = useState<File | null>(null);
     const [imeis, setImeis] = useState("");
     const [useDirectInput, setUseDirectInput] = useState(false);
-    const [profileId, setProfileId] = useState("");
+    const [profileName, setProfileName] = useState("");
     const [tags, setTags] = useState("");
-    const [thingKey, setThingKey] = useState("");
+    const [thingDefinition, setThingDefinition] = useState("");
     const [result, setResult] = useState<any>(null);
     const [isLoading, setIsLoading] = useState<boolean>(false);
 
     const imeiOnlyOperations = [
-        "add-tags",
-        "delete-tags",
-        "delete-things-keys",
+        "Add Tags",
+        "Delete Tags",
+        "Delete Thing by Imei",
+        "Onboarding",
     ];
 
     const operationOptions = [
-        "add-settings",
-        "apply-profile",
-        "add-tags",
-        "delete-tags",
-        "change-def",
-        "delete-things-keys",
-        "delete-things-tags",
+        "Onboarding",
+        "Apply Device Profile",
+        "Add Alarm Settings",
+        "Change ThingDefinition",
+        "Add Tags",
+        "Delete Tags",
+        "Delete Thing by Imei",
+        "Delete Thing by Tags"
+    ];
+
+    const operationMapping = {
+        "Onboarding": "onboarding",
+        "Apply Device Profile": "apply-profile",
+        "Add Alarm Settings": "add-settings",
+        "Change ThingDefinition": "change-def",
+        "Add Tags": "add-tags",
+        "Delete Tags": "delete-tags",
+        "Delete Thing by Imei": "delete-things-keys",
+        "Delete Thing by Tags": "delete-things-tags"
+    };
+
+    const profileOptions = [
+        "Device Management Profile - Basic (Global)",
+        "Device Management Profile - Troubleshooting (Global)",
+        "Minimal FOTA Profile (Global)",
+        "LIDOTT Device Profile"
+    ];
+
+    const thingDefOptions = [
+        "Default",
+        "LIDOTT"
     ];
 
     useEffect(() => {
@@ -68,11 +93,12 @@ const MainPage: React.FC = () => {
             } else if (file) {
                 formData.append("file", file);
             }
-            if (profileId) formData.append("profileId", profileId);
+            if (profileName) formData.append("profileName", profileName);
             if (tags) formData.append("tags", tags);
-            if (thingKey) formData.append("thingKey", thingKey);
+            if (thingDefinition) formData.append("thingDefinition", thingDefinition);
 
-            const response = await fetch(`/api/${operation}`, {
+            const apiOperation = operationMapping[operation as keyof typeof operationMapping];
+            const response = await fetch(`/api/${apiOperation}`, {
                 method: "POST",
                 body: formData,
                 credentials: 'include',
@@ -125,9 +151,7 @@ const MainPage: React.FC = () => {
                                         id="use-direct-input"
                                         type="checkbox"
                                         checked={useDirectInput}
-                                        onChange={(e) => {
-                                            setUseDirectInput(e.target.checked);
-                                        }}
+                                        onChange={(e) => setUseDirectInput(e.target.checked)}
                                         className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                                     />
                                     <label htmlFor="use-direct-input" className="ml-2 text-sm text-gray-700">
@@ -144,9 +168,7 @@ const MainPage: React.FC = () => {
                                     <textarea
                                         id="imeis"
                                         value={imeis}
-                                        onChange={(e) => {
-                                            setImeis(e.target.value);
-                                        }}
+                                        onChange={(e) => setImeis(e.target.value)}
                                         rows={5}
                                         className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                                         placeholder="Enter IMEI numbers, one per line"
@@ -175,32 +197,35 @@ const MainPage: React.FC = () => {
                                                 </label>
                                                 <p className="pl-1">or drag and drop</p>
                                             </div>
-                                            <p className="text-xs text-gray-500">CSV or TXT up to 10MB</p>
+                                            <p className="text-xs text-gray-500">CSV or XLSX file up to 10MB</p>
                                         </div>
                                     </div>
                                     {file && <p className="mt-2 text-sm text-gray-600">Selected file: {file.name}</p>}
                                 </div>
                             )}
 
-                            {operation === "apply-profile" && (
+                            {(operation === "Apply Device Profile" || operation === "Onboarding") && (
                                 <div>
-                                    <label htmlFor="profileId" className="block text-sm font-medium text-gray-700">
-                                        Profile ID
+                                    <label htmlFor="profileName" className="block text-sm font-medium text-gray-700">
+                                        {operation === "Onboarding" ? "Device Profile" : "Profile Name"}
                                     </label>
-                                    <input
-                                        id="profileId"
-                                        type="text"
-                                        value={profileId}
-                                        onChange={(e) => {
-                                            setProfileId(e.target.value);
-                                        }}
-                                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                        placeholder="Enter Profile ID"
-                                    />
+                                    <select
+                                        id="profileName"
+                                        value={profileName}
+                                        onChange={(e) => setProfileName(e.target.value)}
+                                        className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                                    >
+                                        <option value="">Select a profile</option>
+                                        {profileOptions.map((profile) => (
+                                            <option key={profile} value={profile}>
+                                                {profile}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
                             )}
 
-                            {["add-tags", "delete-tags", "delete-things-tags"].includes(operation) && (
+                            {(["Add Tags", "Delete Tags", "Delete Thing by Tags", "Onboarding"].includes(operation)) && (
                                 <div>
                                     <label htmlFor="tags" className="block text-sm font-medium text-gray-700">
                                         Tags
@@ -209,30 +234,31 @@ const MainPage: React.FC = () => {
                                         id="tags"
                                         type="text"
                                         value={tags}
-                                        onChange={(e) => {
-                                            setTags(e.target.value);
-                                        }}
+                                        onChange={(e) => setTags(e.target.value)}
                                         className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                                         placeholder="Enter tags separated by commas"
                                     />
                                 </div>
                             )}
 
-                            {operation === "change-def" && (
+                            {(operation === "Change ThingDefinition" || operation === "Onboarding") && (
                                 <div>
-                                    <label htmlFor="thingKey" className="block text-sm font-medium text-gray-700">
-                                        Thing Definition Key
+                                    <label htmlFor="thingDefinition" className="block text-sm font-medium text-gray-700">
+                                        Thing Definition
                                     </label>
-                                    <input
-                                        id="thingKey"
-                                        type="text"
-                                        value={thingKey}
-                                        onChange={(e) => {
-                                            setThingKey(e.target.value);
-                                        }}
-                                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                        placeholder="Enter new thing definition key"
-                                    />
+                                    <select
+                                        id="thingDefinition"
+                                        value={thingDefinition}
+                                        onChange={(e) => setThingDefinition(e.target.value)}
+                                        className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                                    >
+                                        <option value="">Select a thing definition</option>
+                                        {thingDefOptions.map((def) => (
+                                            <option key={def} value={def}>
+                                                {def}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
                             )}
 
@@ -247,8 +273,7 @@ const MainPage: React.FC = () => {
 
                         {result && (
                             <div
-                                className={`mt-8 p-4 rounded-md ${result.error ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"
-                                    }`}
+                                className={`mt-8 p-4 rounded-md ${result.error ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"}`}
                             >
                                 <h3 className="text-lg font-medium">Operation Result</h3>
                                 {result.error ? (
