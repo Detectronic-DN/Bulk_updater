@@ -51,7 +51,7 @@ async def health_check():
     return {"status": "healthy"}
 
 if __name__ == "__main__":
-    host = "100.81.13.11"
+    host = "127.0.0.1"
     port = 8230
     workers = 3
 

@@ -1,21 +1,29 @@
 import React, { useState, useEffect } from "react";
-import StyledWrapper from "./styledwrapper";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Spinner } from "../components/spinner";
 
-const Spinner: React.FC<{ isLoading: boolean }> = ({ isLoading }) => {
-    if (!isLoading) return null;
+const operationOptions = [
+    "add-settings",
+    "apply-profile",
+    "add-tags",
+    "delete-tags",
+    "change-def",
+    "delete-things-keys",
+    "delete-things-tags",
+    "Onboarding",
+];
 
-    return (
-        <StyledWrapper>
-            <div className="loading">
-                <span />
-                <span />
-                <span />
-                <span />
-                <span />
-            </div>
-        </StyledWrapper>
-    );
-};
+const imeiOnlyOperations = [
+    "add-tags",
+    "delete-tags",
+    "delete-things-keys",
+];
 
 const MainPage: React.FC = () => {
     const [operation, setOperation] = useState("add-settings");
@@ -28,22 +36,6 @@ const MainPage: React.FC = () => {
     const [result, setResult] = useState<any>(null);
     const [isLoading, setIsLoading] = useState<boolean>(false);
 
-    const imeiOnlyOperations = [
-        "add-tags",
-        "delete-tags",
-        "delete-things-keys",
-    ];
-
-    const operationOptions = [
-        "add-settings",
-        "apply-profile",
-        "add-tags",
-        "delete-tags",
-        "change-def",
-        "delete-things-keys",
-        "delete-things-tags",
-    ];
-
     useEffect(() => {
         if (!imeiOnlyOperations.includes(operation)) {
             setUseDirectInput(false);
@@ -52,8 +44,7 @@ const MainPage: React.FC = () => {
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files && event.target.files.length > 0) {
-            const selectedFile = event.target.files[0];
-            setFile(selectedFile);
+            setFile(event.target.files[0]);
         } else {
             setFile(null);
         }
@@ -94,176 +85,123 @@ const MainPage: React.FC = () => {
     };
 
     return (
-        <>
-            <Spinner isLoading={isLoading} />
-            <div className="min-h-screen bg-gray-100 p-8">
-                <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-md overflow-hidden">
-                    <div className="p-8">
-                        <h2 className="text-2xl font-bold mb-6">Device Management Tool</h2>
-                        <div className="space-y-6">
-                            <div>
-                                <label htmlFor="operation" className="block text-sm font-medium text-gray-700">
-                                    Select Operation
-                                </label>
-                                <select
-                                    id="operation"
-                                    value={operation}
-                                    onChange={(e) => setOperation(e.target.value)}
-                                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                                >
+        <div className="container mx-auto p-4">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Device Management Tool</CardTitle>
+                    <CardDescription>Manage your devices with ease</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-4">
+                        <div>
+                            <Label htmlFor="operation">Select Operation</Label>
+                            <Select onValueChange={(value) => setOperation(value)}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select an operation" />
+                                </SelectTrigger>
+                                <SelectContent>
                                     {operationOptions.map((op) => (
-                                        <option key={op} value={op}>
+                                        <SelectItem key={op} value={op}>
                                             {op}
-                                        </option>
+                                        </SelectItem>
                                     ))}
-                                </select>
-                            </div>
-
-                            {imeiOnlyOperations.includes(operation) && (
-                                <div className="flex items-center">
-                                    <input
-                                        id="use-direct-input"
-                                        type="checkbox"
-                                        checked={useDirectInput}
-                                        onChange={(e) => {
-                                            setUseDirectInput(e.target.checked);
-                                        }}
-                                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                                    />
-                                    <label htmlFor="use-direct-input" className="ml-2 text-sm text-gray-700">
-                                        Use direct IMEI input
-                                    </label>
-                                </div>
-                            )}
-
-                            {useDirectInput && imeiOnlyOperations.includes(operation) ? (
-                                <div>
-                                    <label htmlFor="imeis" className="block text-sm font-medium text-gray-700">
-                                        Enter IMEI Numbers
-                                    </label>
-                                    <textarea
-                                        id="imeis"
-                                        value={imeis}
-                                        onChange={(e) => {
-                                            setImeis(e.target.value);
-                                        }}
-                                        rows={5}
-                                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                        placeholder="Enter IMEI numbers, one per line"
-                                    />
-                                </div>
-                            ) : (
-                                <div>
-                                    <label htmlFor="file-upload" className="block text-sm font-medium text-gray-700">
-                                        Upload File
-                                    </label>
-                                    <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-                                        <div className="space-y-1 text-center">
-                                            <div className="flex text-sm text-gray-600">
-                                                <label
-                                                    htmlFor="file-upload"
-                                                    className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500"
-                                                >
-                                                    <span>Upload a file</span>
-                                                    <input
-                                                        id="file-upload"
-                                                        name="file-upload"
-                                                        type="file"
-                                                        className="sr-only"
-                                                        onChange={handleFileChange}
-                                                    />
-                                                </label>
-                                                <p className="pl-1">or drag and drop</p>
-                                            </div>
-                                            <p className="text-xs text-gray-500">CSV or TXT up to 10MB</p>
-                                        </div>
-                                    </div>
-                                    {file && <p className="mt-2 text-sm text-gray-600">Selected file: {file.name}</p>}
-                                </div>
-                            )}
-
-                            {operation === "apply-profile" && (
-                                <div>
-                                    <label htmlFor="profileId" className="block text-sm font-medium text-gray-700">
-                                        Profile ID
-                                    </label>
-                                    <input
-                                        id="profileId"
-                                        type="text"
-                                        value={profileId}
-                                        onChange={(e) => {
-                                            setProfileId(e.target.value);
-                                        }}
-                                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                        placeholder="Enter Profile ID"
-                                    />
-                                </div>
-                            )}
-
-                            {["add-tags", "delete-tags", "delete-things-tags"].includes(operation) && (
-                                <div>
-                                    <label htmlFor="tags" className="block text-sm font-medium text-gray-700">
-                                        Tags
-                                    </label>
-                                    <input
-                                        id="tags"
-                                        type="text"
-                                        value={tags}
-                                        onChange={(e) => {
-                                            setTags(e.target.value);
-                                        }}
-                                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                        placeholder="Enter tags separated by commas"
-                                    />
-                                </div>
-                            )}
-
-                            {operation === "change-def" && (
-                                <div>
-                                    <label htmlFor="thingKey" className="block text-sm font-medium text-gray-700">
-                                        Thing Definition Key
-                                    </label>
-                                    <input
-                                        id="thingKey"
-                                        type="text"
-                                        value={thingKey}
-                                        onChange={(e) => {
-                                            setThingKey(e.target.value);
-                                        }}
-                                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                        placeholder="Enter new thing definition key"
-                                    />
-                                </div>
-                            )}
-
-                            <button
-                                onClick={handleSubmit}
-                                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                                disabled={isLoading}
-                            >
-                                {isLoading ? "Executing..." : "Execute Operation"}
-                            </button>
+                                </SelectContent>
+                            </Select>
                         </div>
 
-                        {result && (
-                            <div
-                                className={`mt-8 p-4 rounded-md ${result.error ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"
-                                    }`}
-                            >
-                                <h3 className="text-lg font-medium">Operation Result</h3>
-                                {result.error ? (
-                                    <p className="mt-2 text-sm">{result.error}</p>
-                                ) : (
-                                    <pre className="mt-2 text-sm whitespace-pre-wrap overflow-x-auto">
-                                        {JSON.stringify(result, null, 2)}
-                                    </pre>
-                                )}
+                        {imeiOnlyOperations.includes(operation) && (
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="use-direct-input"
+                                    checked={useDirectInput}
+                                    onCheckedChange={(checked) => setUseDirectInput(checked as boolean)}
+                                />
+                                <Label htmlFor="use-direct-input">Use direct IMEI input</Label>
+                            </div>
+                        )}
+
+                        {useDirectInput && imeiOnlyOperations.includes(operation) ? (
+                            <div>
+                                <Label htmlFor="imeis">Enter IMEI Numbers</Label>
+                                <Textarea
+                                    id="imeis"
+                                    value={imeis}
+                                    onChange={(e) => setImeis(e.target.value)}
+                                    placeholder="Enter IMEI numbers, one per line"
+                                    rows={5}
+                                />
+                            </div>
+                        ) : (
+                            <div>
+                                <Label htmlFor="file-upload">Upload File</Label>
+                                <Input
+                                    id="file-upload"
+                                    type="file"
+                                    onChange={handleFileChange}
+                                    accept=".csv,.txt"
+                                />
+                                {file && <p className="mt-2 text-sm text-gray-600">Selected file: {file.name}</p>}
+                            </div>
+                        )}
+
+                        {operation === "apply-profile" && (
+                            <div>
+                                <Label htmlFor="profileId">Profile ID</Label>
+                                <Input
+                                    id="profileId"
+                                    value={profileId}
+                                    onChange={(e) => setProfileId(e.target.value)}
+                                    placeholder="Enter Profile ID"
+                                />
+                            </div>
+                        )}
+
+                        {["add-tags", "delete-tags", "delete-things-tags"].includes(operation) && (
+                            <div>
+                                <Label htmlFor="tags">Tags</Label>
+                                <Input
+                                    id="tags"
+                                    value={tags}
+                                    onChange={(e) => setTags(e.target.value)}
+                                    placeholder="Enter tags separated by commas"
+                                />
+                            </div>
+                        )}
+
+                        {operation === "change-def" && (
+                            <div>
+                                <Label htmlFor="thingKey">Thing Definition Key</Label>
+                                <Input
+                                    id="thingKey"
+                                    value={thingKey}
+                                    onChange={(e) => setThingKey(e.target.value)}
+                                    placeholder="Enter new thing definition key"
+                                />
                             </div>
                         )}
                     </div>
-                </div>
-            </div>
-        </>
+                </CardContent>
+                <CardFooter>
+                    <Button onClick={handleSubmit} disabled={isLoading}>
+                        {isLoading ? <Spinner className="mr-2" /> : null}
+                        {isLoading ? "Executing..." : "Execute Operation"}
+                    </Button>
+                </CardFooter>
+            </Card>
+
+            {result && (
+                <Card className="mt-8">
+                    <CardHeader>
+                        <CardTitle>Operation Result</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <pre className="bg-gray-100 p-4 rounded-md overflow-x-auto">
+                            {JSON.stringify(result, null, 2)}
+                        </pre>
+                    </CardContent>
+                </Card>
+            )}
+        </div>
     );
 };
 

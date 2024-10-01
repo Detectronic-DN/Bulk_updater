@@ -24,12 +24,13 @@
         "baseUrl": ".",
         "paths": {
             "@/*": [
-                "./src/*"
+                "src/*"
             ]
         }
     },
     "include": [
-        "src/static/js/**/*"
+        "src/static/js/**/*",
+        "src"
     ],
     "exclude": [
         "node_modules",

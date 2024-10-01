@@ -1,7 +1,12 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MFAPopup } from "./mfapop";
-import { useAuth } from "./AuthContext";
+import { useAuth } from "@/static/js/components/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { MFAPopup } from "@/static/js/components/mfapop";
 
 export const Login: React.FC = () => {
     const [username, setUsername] = useState("");
@@ -42,39 +47,48 @@ export const Login: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
-            <div className="w-full max-w-md bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">Login</h2>
-                <form className="flex flex-col" onSubmit={handleSubmit}>
-                    <input
-                        type="text"
-                        id="username"
-                        name="username"
-                        className="bg-gray-100 text-gray-900 border-0 rounded-md p-2 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 transition ease-in-out duration-150"
-                        placeholder="Username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        required
-                    />
-                    <input
-                        type="password"
-                        id="password"
-                        name="password"
-                        className="bg-gray-100 text-gray-900 border-0 rounded-md p-2 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 transition ease-in-out duration-150"
-                        placeholder="Password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                    />
-                    {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-                    <button
-                        type="submit"
-                        className="bg-gradient-to-r from-indigo-500 to-blue-500 text-white font-bold py-2 px-4 rounded-md hover:bg-indigo-600 hover:to-blue-600 transition ease-in-out duration-150"
-                    >
-                        Login
-                    </button>
-                </form>
-            </div>
+        <div className="flex items-center justify-center min-h-screen bg-gray-100">
+            <Card className="w-[350px]">
+                <CardHeader>
+                    <CardTitle>Login</CardTitle>
+                    <CardDescription>Enter your credentials to access your account</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <form onSubmit={handleSubmit}>
+                        <div className="grid w-full items-center gap-4">
+                            <div className="flex flex-col space-y-1.5">
+                                <Label htmlFor="username">Username</Label>
+                                <Input
+                                    id="username"
+                                    placeholder="Enter your username"
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            <div className="flex flex-col space-y-1.5">
+                                <Label htmlFor="password">Password</Label>
+                                <Input
+                                    id="password"
+                                    type="password"
+                                    placeholder="Enter your password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                />
+                            </div>
+                        </div>
+                        {error && (
+                            <Alert variant="destructive" className="mt-4">
+                                <AlertDescription>{error}</AlertDescription>
+                            </Alert>
+                        )}
+                        <Button className="w-full mt-4" type="submit">
+                            Login
+                        </Button>
+                    </form>
+                </CardContent>
+            </Card>
             {showMFA && (
                 <MFAPopup
                     onSubmit={handleMFASubmit}
